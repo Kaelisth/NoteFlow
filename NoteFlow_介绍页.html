@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoteFlow — 你的本地备忘录</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black: #0D0B09;
+  --dark: #141210;
+  --card: #1C1916;
+  --card2: #221F1B;
+  --gold: #C97D3A;
+  --gold2: #E8A055;
+  --gold3: #F5C880;
+  --cream: #F5F0E8;
+  --cream2: #EDE7D9;
+  --muted: #7A6F65;
+  --text: #E8E0D4;
+  --text2: #A89D92;
+  --border: rgba(201,125,58,0.18);
+  --font-d: 'Playfair Display', Georgia, serif;
+  --font-s: 'DM Sans', 'Noto Sans SC', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body { background: var(--black); color: var(--text); font-family: var(--font-s); overflow-x: hidden; }
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 20px 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(13,11,9,0.95) 0%, transparent 100%);
+  backdrop-filter: blur(0px);
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo-icon {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: bold; color: white;
+  box-shadow: 0 2px 12px rgba(201,125,58,0.5);
+}
+.nav-logo-text { font-family: var(--font-d); font-size: 20px; color: var(--cream); letter-spacing: 0.3px; }
+.nav-links { display: flex; align-items: center; gap: 36px; }
+.nav-links a { color: var(--text2); font-size: 14px; text-decoration: none; transition: color 0.2s; font-weight: 400; letter-spacing: 0.3px; }
+.nav-links a:hover { color: var(--gold2); }
+.nav-cta {
+  padding: 9px 22px; border: 1px solid var(--border);
+  border-radius: 100px; color: var(--gold2) !important;
+  background: rgba(201,125,58,0.08);
+  transition: all 0.2s !important;
+}
+.nav-cta:hover { background: rgba(201,125,58,0.18) !important; border-color: var(--gold) !important; }
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 120px 40px 80px;
+  position: relative; overflow: hidden;
+}
+.hero-glow {
+  position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(201,125,58,0.12) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(201,125,58,0.10); border: 1px solid rgba(201,125,58,0.25);
+  border-radius: 100px; padding: 6px 16px; margin-bottom: 36px;
+  font-size: 12.5px; color: var(--gold2); letter-spacing: 0.8px; text-transform: uppercase;
+  animation: fadeUp 0.8s ease both;
+}
+.hero-badge::before { content: '✦'; font-size: 10px; }
+
+h1 {
+  font-family: var(--font-d);
+  font-size: clamp(52px, 8vw, 96px);
+  font-weight: 900;
+  line-height: 1.0;
+  letter-spacing: -2px;
+  color: var(--cream);
+  margin-bottom: 14px;
+  animation: fadeUp 0.8s 0.1s ease both;
+}
+h1 em { font-style: italic; color: var(--gold2); }
+.hero-sub {
+  font-size: clamp(16px, 2vw, 20px); color: var(--text2); font-weight: 300;
+  max-width: 560px; line-height: 1.7; margin-bottom: 48px;
+  animation: fadeUp 0.8s 0.2s ease both;
+}
+.hero-btns {
+  display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+  animation: fadeUp 0.8s 0.3s ease both;
+}
+.btn-gold {
+  padding: 14px 34px; background: var(--gold);
+  color: white; border: none; border-radius: 100px;
+  font-size: 15px; font-family: var(--font-s); cursor: pointer;
+  font-weight: 500; letter-spacing: 0.2px;
+  box-shadow: 0 4px 24px rgba(201,125,58,0.45);
+  text-decoration: none; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-gold:hover { background: var(--gold2); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,125,58,0.55); }
+.btn-ghost {
+  padding: 14px 34px;
+  color: var(--text); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 100px; font-size: 15px; font-family: var(--font-s);
+  cursor: pointer; font-weight: 400; background: transparent;
+  text-decoration: none; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-ghost:hover { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); }
+
+/* ── APP MOCKUP ── */
+.mockup-wrap {
+  margin-top: 70px; width: 100%; max-width: 960px;
+  position: relative; animation: fadeUp 0.9s 0.5s ease both;
+}
+.mockup-glow {
+  position: absolute; bottom: -60px; left: 50%; transform: translateX(-50%);
+  width: 80%; height: 200px;
+  background: radial-gradient(ellipse, rgba(201,125,58,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.mockup-frame {
+  background: #1A1714;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+}
+.mockup-titlebar {
+  background: #120F0D; padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.dot-r { background: #FF5F57; }
+.dot-y { background: #FFBD2E; }
+.dot-g { background: #28CA41; }
+.mockup-titlebar span { margin-left: 8px; font-size: 13px; color: rgba(255,255,255,0.3); }
+.mockup-body { display: flex; height: 460px; }
+.mock-sidebar {
+  width: 200px; background: #100D0B; border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; padding: 16px 0; flex-shrink: 0;
+}
+.mock-sidebar-item {
+  padding: 9px 16px; font-size: 12px; color: rgba(255,255,255,0.45);
+  border-left: 2px solid transparent; cursor: default;
+}
+.mock-sidebar-item.active { color: rgba(255,255,255,0.85); border-left-color: var(--gold); background: rgba(255,255,255,0.04); }
+.mock-sidebar-date { font-size: 10px; color: rgba(255,255,255,0.2); margin-top: 2px; }
+.mock-main { flex: 1; background: #1C1916; padding: 28px 32px; overflow: hidden; }
+.mock-title { font-family: var(--font-d); font-size: 26px; color: rgba(255,255,255,0.88); font-weight: 400; margin-bottom: 8px; }
+.mock-meta { font-size: 11px; color: rgba(255,255,255,0.25); margin-bottom: 20px; }
+.mock-body p { font-family: 'Playfair Display', serif; font-size: 15px; color: rgba(255,255,255,0.55); line-height: 1.8; margin-bottom: 10px; }
+.mock-body .highlight { color: rgba(255,255,255,0.75); }
+.mock-body .accent { color: var(--gold2); }
+.mock-stats {
+  position: absolute; bottom: 0; left: 200px; right: 0;
+  background: rgba(15,12,10,0.7); border-top: 1px solid rgba(255,255,255,0.05);
+  padding: 7px 32px; display: flex; gap: 24px; font-size: 11px; color: rgba(255,255,255,0.3);
+}
+.mock-stats span { color: rgba(255,255,255,0.5); }
+
+/* ── SECTIONS ── */
+section { padding: 120px 60px; position: relative; z-index: 1; }
+.section-label {
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gold); font-weight: 500; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--gold); }
+h2 { font-family: var(--font-d); font-size: clamp(36px, 5vw, 58px); font-weight: 700; color: var(--cream); line-height: 1.15; letter-spacing: -1px; }
+h2 em { font-style: italic; color: var(--gold2); }
+.section-sub { font-size: 17px; color: var(--text2); line-height: 1.7; margin-top: 14px; max-width: 560px; font-weight: 300; }
+
+/* ── FEATURES GRID ── */
+#features { background: var(--dark); }
+.features-header { max-width: 1200px; margin: 0 auto 60px; }
+.features-grid {
+  max-width: 1200px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+}
+.feat-card {
+  background: var(--card); padding: 40px 36px;
+  transition: background 0.2s;
+  position: relative; overflow: hidden;
+}
+.feat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201,125,58,0.3), transparent);
+  opacity: 0; transition: opacity 0.3s;
+}
+.feat-card:hover { background: var(--card2); }
+.feat-card:hover::before { opacity: 1; }
+.feat-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: rgba(201,125,58,0.12); border: 1px solid rgba(201,125,58,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 20px;
+}
+.feat-card h3 { font-family: var(--font-d); font-size: 20px; color: var(--cream); font-weight: 600; margin-bottom: 10px; }
+.feat-card p { font-size: 14px; color: var(--text2); line-height: 1.75; font-weight: 300; }
+.feat-big { grid-column: span 2; }
+
+/* ── STATS STRIP ── */
+.stats-strip {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--card);
+  display: flex;
+}
+.stat-block {
+  flex: 1; padding: 48px 40px; text-align: center;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.stat-block:last-child { border-right: none; }
+.stat-num { font-family: var(--font-d); font-size: 52px; font-weight: 700; color: var(--gold2); line-height: 1; margin-bottom: 8px; }
+.stat-desc { font-size: 13px; color: var(--text2); letter-spacing: 0.3px; }
+
+/* ── LANGS ── */
+#languages { background: var(--black); }
+.lang-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+.lang-list { display: flex; flex-direction: column; gap: 14px; margin-top: 40px; }
+.lang-row {
+  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  background: var(--card); border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: all 0.2s;
+}
+.lang-row:hover { border-color: var(--border); background: var(--card2); }
+.lang-flag { font-size: 22px; }
+.lang-name { font-size: 15px; color: var(--cream); font-weight: 400; }
+.lang-native { font-size: 13px; color: var(--text2); margin-left: auto; }
+.lang-visual {
+  background: var(--card); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 32px; height: 360px; display: flex; flex-direction: column; gap: 12px;
+  overflow: hidden;
+}
+.lang-preview {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: 8px;
+  font-size: 14px; transition: all 0.3s;
+}
+.lang-preview.zh { background: rgba(201,125,58,0.12); border: 1px solid rgba(201,125,58,0.2); color: var(--gold2); }
+.lang-preview:not(.zh) { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: var(--text2); }
+.lang-preview:not(.zh):hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+/* ── FORMAT STRIP ── */
+#formats { background: var(--dark); }
+.formats-container { max-width: 1200px; margin: 0 auto; }
+.formats-header { text-align: center; margin-bottom: 60px; }
+.formats-header h2 { text-align: center; }
+.formats-header .section-label { justify-content: center; }
+.formats-header .section-label::before { display: none; }
+.format-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.format-chip {
+  background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 20px 16px; text-align: center;
+  transition: all 0.2s;
+}
+.format-chip:hover { border-color: var(--border); background: var(--card2); }
+.format-chip .icon { font-size: 26px; margin-bottom: 8px; }
+.format-chip .ext { font-size: 12px; font-weight: 500; color: var(--text); }
+.format-chip .type { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+/* ── HOW IT WORKS ── */
+#howto { background: var(--black); }
+.howto-container { max-width: 1200px; margin: 0 auto; }
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 60px; }
+.step {
+  background: var(--card); padding: 40px 32px;
+  position: relative; overflow: hidden;
+}
+.step-num {
+  font-family: var(--font-d); font-size: 80px; font-weight: 900;
+  color: rgba(201,125,58,0.08); position: absolute; top: 10px; right: 16px;
+  line-height: 1; pointer-events: none; user-select: none;
+}
+.step-icon { font-size: 28px; margin-bottom: 20px; }
+.step h4 { font-family: var(--font-d); font-size: 18px; color: var(--cream); margin-bottom: 10px; font-weight: 600; }
+.step p { font-size: 13.5px; color: var(--text2); line-height: 1.7; font-weight: 300; }
+
+/* ── CTA ── */
+#cta {
+  padding: 140px 60px; text-align: center; position: relative; overflow: hidden;
+  background: var(--dark);
+}
+.cta-glow {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 800px; height: 400px;
+  background: radial-gradient(ellipse, rgba(201,125,58,0.10) 0%, transparent 65%);
+  pointer-events: none;
+}
+#cta h2 { margin: 0 auto 16px; max-width: 700px; text-align: center; }
+#cta p { font-size: 17px; color: var(--text2); margin-bottom: 48px; font-weight: 300; }
+.cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.os-tags { margin-top: 24px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.os-tag { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.os-tag::before { content: '✓'; color: var(--gold); }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 40px 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; color: var(--muted);
+}
+footer .logo { font-family: var(--font-d); font-size: 16px; color: var(--cream2); display: flex; align-items: center; gap: 8px; }
+.footer-mark { color: var(--gold); font-size: 10px; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-d1 { transition-delay: 0.1s; }
+.reveal-d2 { transition-delay: 0.2s; }
+.reveal-d3 { transition-delay: 0.3s; }
+.reveal-d4 { transition-delay: 0.4s; }
+
+/* ── DIVIDER ── */
+.divider { width: 60px; height: 1px; background: var(--gold); margin: 28px 0; opacity: 0.5; }
+
+@media (max-width: 900px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  section { padding: 80px 24px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .feat-big { grid-column: span 1; }
+  .stats-strip { flex-wrap: wrap; }
+  .stat-block { min-width: 50%; }
+  .lang-container { grid-template-columns: 1fr; }
+  .format-grid { grid-template-columns: repeat(3, 1fr); }
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  footer { flex-direction: column; gap: 12px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">✦</div>
+    <span class="nav-logo-text">NoteFlow</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">功能</a>
+    <a href="#languages">多语言</a>
+    <a href="#formats">文件格式</a>
+    <a href="#howto">使用方式</a>
+    <a href="#cta" class="nav-cta">立即下载</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge">全本地 · 无需登录 · 完全免费</div>
+  <h1>思考，<em>落笔</em>，<br>一切留存。</h1>
+  <p class="hero-sub">NoteFlow 是一款精美的本地备忘录应用，无需账号，无需联网，你的所有内容完全属于你自己。</p>
+  <div class="hero-btns">
+    <a href="NoteFlow.html" class="btn-gold">✦ &nbsp;打开应用</a>
+    <a href="#features" class="btn-ghost">了解功能 →</a>
+  </div>
+
+  <!-- APP MOCKUP -->
+  <div class="mockup-wrap">
+    <div class="mockup-glow"></div>
+    <div class="mockup-frame">
+      <div class="mockup-titlebar">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+        <span>NoteFlow</span>
+      </div>
+      <div class="mockup-body" style="position:relative">
+        <!-- Sidebar -->
+        <div class="mock-sidebar">
+          <div style="padding:10px 14px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom:8px;">
+            <div style="background:rgba(255,255,255,0.05);border-radius:5px;height:26px;"></div>
+          </div>
+          <div class="mock-sidebar-item active">
+            <div>2025 产品规划</div>
+            <div class="mock-sidebar-date">刚刚</div>
+          </div>
+          <div class="mock-sidebar-item">
+            <div>读书笔记 · 置身事内</div>
+            <div class="mock-sidebar-date">2 小时前</div>
+          </div>
+          <div class="mock-sidebar-item">
+            <div>旅行清单 — 京都</div>
+            <div class="mock-sidebar-date">昨天</div>
+          </div>
+          <div class="mock-sidebar-item">
+            <div>会议纪要 0312</div>
+            <div class="mock-sidebar-date">3 天前</div>
+          </div>
+          <div class="mock-sidebar-item">
+            <div>想法收集箱</div>
+            <div class="mock-sidebar-date">上周</div>
+          </div>
+          <div class="mock-sidebar-item">
+            <div>学习资源整理</div>
+            <div class="mock-sidebar-date">上周</div>
+          </div>
+        </div>
+        <!-- Main -->
+        <div class="mock-main">
+          <div class="mock-title">2025 产品规划</div>
+          <div class="mock-meta">📅 2025.03.12 &nbsp;·&nbsp; ✏️ 刚刚修改</div>
+          <div class="mock-body">
+            <p class="highlight">一季度目标</p>
+            <p>完成核心功能迭代，重点关注<span class="accent">编辑器性能</span>和多端数据同步方案的可行性验证。团队已对齐路线图，各模块负责人确认排期。</p>
+            <p>⬜ &nbsp;用户调研（N=50）&nbsp; &nbsp; ⬜ &nbsp;原型评审 &nbsp; &nbsp; ✅ &nbsp;技术选型</p>
+            <p style="margin-top:12px;opacity:0.6;font-size:13px">📎 产品需求文档.pdf &nbsp; &nbsp; 📊 数据分析报告.xlsx</p>
+          </div>
+        </div>
+        <!-- Stats bar -->
+        <div class="mock-stats">
+          字符 <span>342</span> &nbsp; 词数 <span>97</span> &nbsp; 段落 <span>4</span> &nbsp; 阅读约 <span>24 秒</span>
+          <span style="margin-left:auto;color:rgba(39,174,96,0.8)">✓ 已自动保存</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP -->
+<div class="stats-strip">
+  <div class="stat-block reveal">
+    <div class="stat-num">5+</div>
+    <div class="stat-desc">支持界面语言</div>
+  </div>
+  <div class="stat-block reveal reveal-d1">
+    <div class="stat-num">20+</div>
+    <div class="stat-desc">支持文件格式</div>
+  </div>
+  <div class="stat-block reveal reveal-d2">
+    <div class="stat-num">100%</div>
+    <div class="stat-desc">本地存储，零上传</div>
+  </div>
+  <div class="stat-block reveal reveal-d3">
+    <div class="stat-num">0</div>
+    <div class="stat-desc">账号 / 订阅 / 广告</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="features-header reveal">
+    <div class="section-label">核心功能</div>
+    <h2>一切你需要的，<br><em>没有你不需要的。</em></h2>
+    <p class="section-sub">精心设计的功能集合，专为日常思考、记录与整理而生。</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card feat-big reveal">
+      <div class="feat-icon">✒️</div>
+      <h3>富文本编辑器</h3>
+      <p>支持加粗、斜体、下划线、删除线、多级标题、有序与无序列表、引用块、代码块、超链接、表格，以及文字颜色与高亮标注。所见即所得，撤销与重做随时可用。</p>
+    </div>
+    <div class="feat-card reveal reveal-d1">
+      <div class="feat-icon">📊</div>
+      <h3>实时写作统计</h3>
+      <p>底部状态栏实时显示字符数、词数、段落数、行数与预计阅读时长，媲美 Word 的数据指数。</p>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">📎</div>
+      <h3>多类型文件嵌入</h3>
+      <p>图片直接嵌入正文预览，PDF、Word、Excel、音视频等文件以卡片形式内联，点击即可下载。</p>
+    </div>
+    <div class="feat-card reveal reveal-d1">
+      <div class="feat-icon">☑️</div>
+      <h3>待办清单</h3>
+      <p>一键插入可勾选的 checkbox 列表，将待办事项直接融入备忘内容，随时标记完成状态。</p>
+    </div>
+    <div class="feat-card reveal reveal-d2">
+      <div class="feat-icon">💾</div>
+      <h3>自动保存</h3>
+      <p>输入后 0.8 秒自动将内容存入 localStorage，关闭页面刷新均不丢失，无需手动保存。</p>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">🔍</div>
+      <h3>全文实时搜索</h3>
+      <p>侧边栏搜索框即时过滤，同时检索标题与正文内容，海量笔记中秒速定位目标备忘。</p>
+    </div>
+    <div class="feat-card reveal reveal-d1">
+      <div class="feat-icon">↓</div>
+      <h3>一键导出</h3>
+      <p>将当前备忘导出为独立 HTML 文件，保留所有格式与内嵌图片，可直接用浏览器打开分享。</p>
+    </div>
+    <div class="feat-card reveal reveal-d2">
+      <div class="feat-icon">⇔</div>
+      <h3>可调节侧边栏</h3>
+      <p>拖拽边界自由调整侧边栏宽度，适配不同屏幕与工作流偏好，布局完全由你掌控。</p>
+    </div>
+  </div>
+</section>
+
+<!-- LANGUAGES -->
+<section id="languages">
+  <div class="lang-container">
+    <div class="reveal">
+      <div class="section-label">多语言</div>
+      <h2>写作<br><em>无国界。</em></h2>
+      <p class="section-sub">一键切换界面语言，语言偏好自动保存，让每个人都能用母语思考。</p>
+      <div class="divider"></div>
+      <div class="lang-list">
+        <div class="lang-row"><span class="lang-flag">🇨🇳</span><span class="lang-name">简体中文</span><span class="lang-native">Chinese (Simplified)</span></div>
+        <div class="lang-row"><span class="lang-flag">🇺🇸</span><span class="lang-name">English</span><span class="lang-native">English</span></div>
+        <div class="lang-row"><span class="lang-flag">🇯🇵</span><span class="lang-name">日本語</span><span class="lang-native">Japanese</span></div>
+        <div class="lang-row"><span class="lang-flag">🇰🇷</span><span class="lang-name">한국어</span><span class="lang-native">Korean</span></div>
+        <div class="lang-row"><span class="lang-flag">🇫🇷</span><span class="lang-name">Français</span><span class="lang-native">French</span></div>
+      </div>
+    </div>
+    <div class="lang-visual reveal reveal-d2">
+      <div class="lang-preview zh">✦ &nbsp;新建备忘 — 开始写点什么</div>
+      <div class="lang-preview">✦ &nbsp;New Note — Start writing…</div>
+      <div class="lang-preview">✦ &nbsp;新しいメモ — 書き始める</div>
+      <div class="lang-preview">✦ &nbsp;새 메모 — 내용을 입력하세요</div>
+      <div class="lang-preview">✦ &nbsp;Nouvelle note — Commencez</div>
+    </div>
+  </div>
+</section>
+
+<!-- FILE FORMATS -->
+<section id="formats">
+  <div class="formats-container">
+    <div class="formats-header reveal">
+      <div class="section-label">文件支持</div>
+      <h2>任何文件，<em>一并收录。</em></h2>
+      <p class="section-sub" style="text-align:center;margin:14px auto 0;">图片直接嵌入显示，其余文件类型作为内联附件卡片，点击即可下载。</p>
+    </div>
+    <div class="format-grid">
+      <div class="format-chip reveal"><div class="icon">🖼</div><div class="ext">JPG / PNG</div><div class="type">图片（嵌入显示）</div></div>
+      <div class="format-chip reveal reveal-d1"><div class="icon">🎨</div><div class="ext">GIF / SVG</div><div class="type">图片（嵌入显示）</div></div>
+      <div class="format-chip reveal reveal-d2"><div class="icon">📄</div><div class="ext">PDF</div><div class="type">文档</div></div>
+      <div class="format-chip reveal"><div class="icon">📝</div><div class="ext">DOC / DOCX</div><div class="type">Word 文档</div></div>
+      <div class="format-chip reveal reveal-d1"><div class="icon">📊</div><div class="ext">XLS / XLSX</div><div class="type">表格</div></div>
+      <div class="format-chip reveal reveal-d2"><div class="icon">📋</div><div class="ext">PPT / PPTX</div><div class="type">演示文稿</div></div>
+      <div class="format-chip reveal"><div class="icon">🎵</div><div class="ext">MP3 / WAV</div><div class="type">音频</div></div>
+      <div class="format-chip reveal reveal-d1"><div class="icon">🎬</div><div class="ext">MP4 / MOV</div><div class="type">视频</div></div>
+      <div class="format-chip reveal reveal-d2"><div class="icon">📦</div><div class="ext">ZIP / RAR</div><div class="type">压缩包</div></div>
+      <div class="format-chip reveal"><div class="icon">📃</div><div class="ext">TXT / MD</div><div class="type">文本</div></div>
+      <div class="format-chip reveal reveal-d1"><div class="icon">📜</div><div class="ext">JS / PY</div><div class="type">代码文件</div></div>
+      <div class="format-chip reveal reveal-d2"><div class="icon">📎</div><div class="ext">其他格式</div><div class="type">通用附件</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="howto">
+  <div class="howto-container">
+    <div style="text-align:center" class="reveal">
+      <div class="section-label" style="justify-content:center"><span style="display:none"></span>使用方式</div>
+      <h2 style="text-align:center">三种方式，<em>随你选择。</em></h2>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <div class="step-icon">🌐</div>
+        <h4>浏览器直接使用</h4>
+        <p>双击 NoteFlow.html，用 Chrome / Edge / Firefox 打开即可。无需安装任何软件，数据保存在浏览器本地。</p>
+      </div>
+      <div class="step reveal reveal-d1">
+        <div class="step-num">2</div>
+        <div class="step-icon">⚡</div>
+        <h4>Electron 打包 exe</h4>
+        <p>安装 Node.js 后执行 <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:12px">npm install && npm run build:win</code>，生成专业桌面安装包。</p>
+      </div>
+      <div class="step reveal reveal-d2">
+        <div class="step-num">3</div>
+        <div class="step-icon">🐍</div>
+        <h4>Python 单文件 exe</h4>
+        <p>安装 pywebview 和 PyInstaller 后执行打包命令，生成无需依赖的单文件可执行程序。</p>
+      </div>
+      <div class="step reveal reveal-d3">
+        <div class="step-num">∞</div>
+        <div class="step-icon">🔓</div>
+        <h4>完全开放源码</h4>
+        <p>所有源码随 zip 包提供，HTML、main.js、launcher.py 一览无余，随意修改与二次开发。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-glow"></div>
+  <div class="section-label" style="justify-content:center;margin-bottom:20px">
+    <span style="display:none"></span>开始使用
+  </div>
+  <h2>你的想法值得<br><em>更好的归宿。</em></h2>
+  <p>免费 · 本地 · 无广告 · 无账号 · 永久可用</p>
+  <div class="cta-btns">
+    <a href="NoteFlow.html" class="btn-gold">✦ &nbsp;打开 NoteFlow</a>
+    <a href="NoteFlow_Source.zip" class="btn-ghost">⬇ &nbsp;下载源码包</a>
+  </div>
+  <div class="os-tags">
+    <span class="os-tag">Windows</span>
+    <span class="os-tag">macOS</span>
+    <span class="os-tag">Linux</span>
+    <span class="os-tag">任意现代浏览器</span>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="logo">✦ NoteFlow</span>
+  <span>完全本地 · 数据永远属于你</span>
+  <span><span class="footer-mark">✦</span> 用爱制作</span>
+</footer>
+
+<script>
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoteFlow — 我的备忘录</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F0E8;
+    --bg2: #EDE7D9;
+    --sidebar-bg: #2C2825;
+    --sidebar-hover: #3A3530;
+    --sidebar-active: #4A4540;
+    --sidebar-text: #C8BFB0;
+    --sidebar-muted: #7A6F65;
+    --paper: #FDFAF4;
+    --paper-shadow: rgba(80,60,30,0.12);
+    --ink: #2A2420;
+    --ink2: #5A5048;
+    --ink3: #8A7F75;
+    --accent: #C97D3A;
+    --accent2: #E8A055;
+    --accent-light: rgba(201,125,58,0.12);
+    --red: #C0392B;
+    --green: #27AE60;
+    --blue: #2980B9;
+    --border: rgba(80,60,30,0.12);
+    --toolbar-bg: #F0EAE0;
+    --selection: rgba(201,125,58,0.25);
+    --radius: 10px;
+    --shadow: 0 4px 24px rgba(60,40,20,0.10), 0 1px 4px rgba(60,40,20,0.06);
+    --font-serif: 'Crimson Pro', 'Noto Serif SC', Georgia, serif;
+    --font-sans: 'Noto Sans SC', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  ::selection { background: var(--selection); }
+  body { font-family: var(--font-sans); background: var(--bg); color: var(--ink); height: 100vh; display: flex; overflow: hidden; font-size: 14px; }
+
+  /* ── SIDEBAR ── */
+  #sidebar { width: 240px; min-width: 200px; max-width: 320px; background: var(--sidebar-bg); display: flex; flex-direction: column; user-select: none; position: relative; z-index: 10; }
+  #sidebar-header { padding: 22px 18px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .app-logo { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; }
+  .logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; color: white; font-weight: bold; box-shadow: 0 2px 8px rgba(201,125,58,0.4); }
+  .app-name { font-family: var(--font-serif); font-size: 18px; font-weight: 600; color: #EDE7D9; letter-spacing: 0.3px; }
+  #search-box { width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 7px; padding: 7px 11px 7px 30px; color: var(--sidebar-text); font-size: 12.5px; font-family: var(--font-sans); outline: none; transition: border-color 0.2s, background 0.2s; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23C8BFB0' stroke-width='2'/%3E%3Cpath d='M20 20l-3-3' stroke='%23C8BFB0' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; }
+  #search-box::placeholder { color: var(--sidebar-muted); }
+  #search-box:focus { border-color: var(--accent); background: rgba(255,255,255,0.10); }
+  #sidebar-toolbar { padding: 10px 12px; display: flex; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .s-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 6px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); border-radius: 7px; color: var(--sidebar-text); font-size: 11.5px; font-family: var(--font-sans); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .s-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  #notes-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  #notes-list::-webkit-scrollbar { width: 4px; }
+  #notes-list::-webkit-scrollbar-track { background: transparent; }
+  #notes-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  .note-item { padding: 11px 16px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; position: relative; overflow: hidden; }
+  .note-item:hover { background: var(--sidebar-hover); }
+  .note-item.active { background: var(--sidebar-active); border-left-color: var(--accent); }
+  .note-item-title { color: #E0D8CC; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .note-item-preview { color: var(--sidebar-muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; }
+  .note-item-date { color: var(--sidebar-muted); font-size: 10.5px; }
+  .note-tag { font-size: 9.5px; padding: 1px 6px; border-radius: 10px; background: rgba(201,125,58,0.2); color: var(--accent2); }
+  .note-item-del { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0; width: 22px; height: 22px; border-radius: 5px; background: rgba(192,57,43,0.7); color: white; border: none; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: opacity 0.15s; }
+  .note-item:hover .note-item-del { opacity: 1; }
+  #sidebar-footer { padding: 10px 14px; border-top: 1px solid rgba(255,255,255,0.06); color: var(--sidebar-muted); font-size: 11px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* Language switcher */
+  #lang-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: var(--sidebar-muted); font-size: 11px; font-family: var(--font-sans); padding: 3px 8px; cursor: pointer; transition: all 0.15s; }
+  #lang-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  #lang-menu { position: absolute; bottom: 48px; left: 10px; background: var(--sidebar-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100; display: none; }
+  #lang-menu.open { display: block; }
+  .lang-opt { padding: 9px 18px; color: var(--sidebar-text); font-size: 12px; font-family: var(--font-sans); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px; }
+  .lang-opt:hover { background: var(--sidebar-hover); }
+  .lang-opt.active { color: var(--accent2); }
+  .lang-opt .flag { font-size: 14px; }
+
+  /* ── MAIN ── */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  #editor-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 28px 32px 0; }
+  #title-input { font-family: var(--font-serif); font-size: 32px; font-weight: 300; color: var(--ink); border: none; outline: none; background: transparent; width: 100%; margin-bottom: 6px; letter-spacing: 0.3px; border-bottom: 1.5px solid transparent; padding-bottom: 4px; transition: border-color 0.2s; }
+  #title-input:focus { border-bottom-color: var(--accent); }
+  #title-input::placeholder { color: var(--ink3); font-style: italic; }
+  #note-meta-bar { display: flex; align-items: center; gap: 12px; padding: 6px 0 12px; font-size: 11.5px; color: var(--ink3); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .meta-chip { display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg2); border-radius: 20px; font-size: 11px; color: var(--ink2); border: 1px solid var(--border); }
+
+  /* ── TOOLBAR ── */
+  #toolbar { background: var(--toolbar-bg); border-bottom: 1px solid var(--border); padding: 6px 32px; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+  .tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+  .tb-btn { width: 30px; height: 28px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--ink2); transition: all 0.12s; position: relative; }
+  .tb-btn:hover { background: var(--accent-light); color: var(--accent); }
+  .tb-btn svg { width: 14px; height: 14px; }
+  .tb-select { height: 28px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--paper); font-family: var(--font-sans); font-size: 12px; color: var(--ink2); cursor: pointer; outline: none; }
+  .tb-colorpick { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; overflow: hidden; }
+  .tb-colorpick input { width: 200%; height: 200%; margin: -20%; cursor: pointer; border: none; }
+
+  /* ── EDITOR ── */
+  #editor-wrap { flex: 1; overflow-y: auto; padding: 20px 0 40px; }
+  #editor-wrap::-webkit-scrollbar { width: 6px; }
+  #editor-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+  #editor { min-height: 400px; outline: none; font-family: var(--font-serif); font-size: 18px; line-height: 1.85; color: var(--ink); caret-color: var(--accent); white-space: pre-wrap; word-wrap: break-word; }
+  #editor:empty:before { content: attr(data-placeholder); color: var(--ink3); pointer-events: none; font-style: italic; }
+  #editor img { max-width: 100%; border-radius: 8px; box-shadow: var(--shadow); display: block; margin: 12px 0; cursor: pointer; transition: box-shadow 0.2s; }
+  #editor img:hover { box-shadow: 0 6px 30px rgba(60,40,20,0.2); }
+  #editor img.selected { outline: 2px solid var(--accent); outline-offset: 3px; }
+  #editor .file-embed { display: inline-flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 6px 0; cursor: pointer; text-decoration: none; color: var(--ink); font-size: 14px; font-family: var(--font-sans); transition: all 0.15s; }
+  #editor .file-embed:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+  #editor blockquote { border-left: 3px solid var(--accent); padding-left: 16px; color: var(--ink2); font-style: italic; margin: 8px 0; }
+  #editor h1 { font-family: var(--font-serif); font-size: 28px; font-weight: 600; margin: 12px 0 6px; }
+  #editor h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 600; margin: 10px 0 5px; }
+  #editor h3 { font-family: var(--font-serif); font-size: 18px; font-weight: 600; margin: 8px 0 4px; }
+  #editor ul, #editor ol { padding-left: 22px; }
+  #editor li { margin: 3px 0; }
+  #editor a { color: var(--accent); text-decoration: underline; }
+  #editor table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 15px; font-family: var(--font-sans); }
+  #editor td, #editor th { border: 1px solid var(--border); padding: 7px 11px; }
+  #editor th { background: var(--bg2); font-weight: 600; }
+  #editor code { background: var(--bg2); border-radius: 4px; padding: 1px 5px; font-size: 14px; font-family: monospace; color: var(--red); }
+  #editor pre { background: var(--sidebar-bg); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0; }
+  #editor pre code { background: none; color: #E0D8CC; font-size: 13px; padding: 0; }
+
+  /* ── STATS BAR ── */
+  #stats-bar { background: var(--toolbar-bg); border-top: 1px solid var(--border); padding: 6px 32px; display: flex; align-items: center; gap: 20px; font-size: 11.5px; color: var(--ink3); }
+  .stat-item { display: flex; align-items: center; gap: 4px; }
+  .stat-val { color: var(--ink2); font-weight: 500; font-variant-numeric: tabular-nums; }
+  #stats-bar .spacer { flex: 1; }
+  #autosave-badge { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 4px; opacity: 0; transition: opacity 0.4s; }
+  #autosave-badge.show { opacity: 1; }
+
+  /* ── EMPTY STATE ── */
+  #empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--ink3); text-align: center; gap: 14px; padding: 40px; }
+  .empty-icon { width: 72px; height: 72px; background: var(--bg2); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 4px; border: 1px solid var(--border); }
+  .empty-title { font-family: var(--font-serif); font-size: 22px; color: var(--ink2); }
+  .empty-sub { font-size: 13px; max-width: 280px; line-height: 1.6; }
+  .empty-cta { padding: 10px 22px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 13.5px; font-family: var(--font-sans); cursor: pointer; margin-top: 4px; transition: background 0.15s, transform 0.1s; box-shadow: 0 3px 12px rgba(201,125,58,0.35); }
+  .empty-cta:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(40,30,20,0.55); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border-radius: 14px; padding: 28px 32px; min-width: 320px; max-width: 480px; box-shadow: 0 20px 60px rgba(40,20,10,0.3); animation: pop 0.18s ease-out; }
+  @keyframes pop { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal h3 { font-family: var(--font-serif); font-size: 19px; margin-bottom: 14px; }
+  .modal input[type=text] { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 14px; font-family: var(--font-sans); outline: none; background: var(--bg); color: var(--ink); margin-bottom: 14px; transition: border-color 0.15s; }
+  .modal input[type=text]:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-primary { padding: 8px 18px; background: var(--accent); color: white; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background 0.15s; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-sec { padding: 8px 18px; background: var(--bg2); color: var(--ink2); border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background 0.15s; }
+  .btn-sec:hover { background: var(--bg); }
+
+  /* Attachments */
+  #attach-panel { border-top: 1px solid var(--border); background: var(--bg2); max-height: 0; overflow: hidden; transition: max-height 0.3s; padding: 0 32px; }
+  #attach-panel.open { max-height: 120px; padding: 10px 32px; }
+  .attach-list { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .attach-chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--paper); border: 1px solid var(--border); border-radius: 7px; font-size: 12px; color: var(--ink2); cursor: pointer; transition: all 0.13s; }
+  .attach-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .attach-rm { color: var(--red); font-size: 11px; margin-left: 4px; }
+
+  /* Resizer */
+  #resizer { width: 4px; cursor: ew-resize; background: transparent; transition: background 0.2s; flex-shrink: 0; }
+  #resizer:hover, #resizer.dragging { background: var(--accent); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <div class="app-logo">
+      <div class="logo-icon">✦</div>
+      <span class="app-name">NoteFlow</span>
+    </div>
+    <input id="search-box" type="text" placeholder="搜索备忘录…" oninput="filterNotes(this.value)">
+  </div>
+  <div id="sidebar-toolbar">
+    <button class="s-btn" id="btn-new" onclick="newNote()">＋ 新建</button>
+    <button class="s-btn" id="btn-export" onclick="exportCurrentNote()">↓ 导出</button>
+  </div>
+  <div id="notes-list"></div>
+  <div id="sidebar-footer">
+    <span id="note-count-label">共 0 条备忘</span>
+    <button id="lang-btn" onclick="toggleLangMenu()">🌐 语言</button>
+  </div>
+  <!-- Language Menu -->
+  <div id="lang-menu">
+    <div class="lang-opt active" onclick="setLang('zh')" data-lang="zh"><span class="flag">🇨🇳</span> 简体中文</div>
+    <div class="lang-opt" onclick="setLang('en')" data-lang="en"><span class="flag">🇺🇸</span> English</div>
+    <div class="lang-opt" onclick="setLang('ja')" data-lang="ja"><span class="flag">🇯🇵</span> 日本語</div>
+    <div class="lang-opt" onclick="setLang('ko')" data-lang="ko"><span class="flag">🇰🇷</span> 한국어</div>
+    <div class="lang-opt" onclick="setLang('fr')" data-lang="fr"><span class="flag">🇫🇷</span> Français</div>
+  </div>
+</div>
+
+<!-- RESIZER -->
+<div id="resizer"></div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- TOOLBAR -->
+  <div id="toolbar" class="hidden">
+    <select class="tb-select" id="fontSizeSelect" onchange="execCmd('fontSize', this.value)">
+      <option value="2">小</option><option value="3" selected>正常</option><option value="4">大</option><option value="5">更大</option><option value="6">特大</option>
+    </select>
+    <select class="tb-select" id="headingSelect" onchange="insertHeading(this.value)">
+      <option value="" id="opt-body">正文</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option>
+    </select>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="execCmd('bold')" title="Bold / 加粗"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 010 8H6z"/><path d="M6 12h9a4 4 0 010 8H6z"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('italic')" title="Italic / 斜体"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('underline')" title="Underline / 下划线"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4v6a6 6 0 0012 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('strikeThrough')" title="Strike / 删除线"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="12" x2="20" y2="12"/><path d="M17.5 6.5C16.5 5.5 15 5 13 5c-3 0-5 1.5-5 4 0 1.5.8 2.5 2 3"/><path d="M6.5 17.5C7.5 18.5 9 19 11 19c3.5 0 6-1.8 6-5 0-1.5-.8-2.5-2-3"/></svg></button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="execCmd('insertUnorderedList')" title="List / 无序列表"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('insertOrderedList')" title="Ordered List / 有序列表"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('formatBlock','blockquote')" title="Quote / 引用"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg></button>
+    <button class="tb-btn" onclick="insertCode()" title="Code / 代码"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+    <button class="tb-btn" onclick="insertTable()" title="Table / 表格"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="execCmd('justifyLeft')" title="Left / 左对齐"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('justifyCenter')" title="Center / 居中"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="document.getElementById('img-input').click()" title="Image / 图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+    <button class="tb-btn" onclick="document.getElementById('file-input').click()" title="File / 文件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
+    <button class="tb-btn" onclick="insertLink()" title="Link / 链接"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
+    <button class="tb-btn" onclick="insertCheckbox()" title="Todo / 待办"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></button>
+    <div class="tb-sep"></div>
+    <div class="tb-colorpick" title="Text Color"><input type="color" id="textColorPick" value="#2A2420" oninput="execCmd('foreColor', this.value)"></div>
+    <div class="tb-colorpick" style="background:#fff9c4" title="Highlight"><input type="color" id="hlColorPick" value="#fff176" oninput="execCmd('hiliteColor', this.value)"></div>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="execCmd('undo')" title="Undo / 撤销"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+    <button class="tb-btn" onclick="execCmd('redo')" title="Redo / 重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></button>
+  </div>
+
+  <!-- EDITOR AREA -->
+  <div id="editor-area" class="hidden">
+    <input id="title-input" type="text" placeholder="无标题备忘…" spellcheck="false" oninput="onTitleChange()">
+    <div id="note-meta-bar">
+      <span class="meta-chip">📅 <span id="mc-date">—</span></span>
+      <span class="meta-chip" id="meta-modified">✏️ —</span>
+    </div>
+    <div id="editor-wrap">
+      <div id="editor" contenteditable="true" spellcheck="true" data-placeholder="开始写点什么…"></div>
+    </div>
+  </div>
+
+  <!-- ATTACHMENTS -->
+  <div id="attach-panel"></div>
+
+  <!-- STATS BAR -->
+  <div id="stats-bar" class="hidden">
+    <div class="stat-item"><span class="stat-label" id="lbl-chars">字符</span>&nbsp;<span class="stat-val" id="st-chars">0</span></div>
+    <div class="stat-item"><span class="stat-label" id="lbl-words">词数</span>&nbsp;<span class="stat-val" id="st-words">0</span></div>
+    <div class="stat-item"><span class="stat-label" id="lbl-paras">段落</span>&nbsp;<span class="stat-val" id="st-paras">0</span></div>
+    <div class="stat-item"><span class="stat-label" id="lbl-lines">行数</span>&nbsp;<span class="stat-val" id="st-lines">0</span></div>
+    <div class="stat-item"><span class="stat-label" id="lbl-read">阅读约</span>&nbsp;<span class="stat-val" id="st-read">0s</span></div>
+    <div class="spacer"></div>
+    <div id="autosave-badge">✓ <span id="lbl-saved">已自动保存</span></div>
+  </div>
+
+  <!-- EMPTY STATE -->
+  <div id="empty-state">
+    <div class="empty-icon">✦</div>
+    <div class="empty-title" id="empty-title">从一个想法开始</div>
+    <div class="empty-sub" id="empty-sub">创建你的第一条备忘，支持富文本、图片、文件、表格、待办清单等</div>
+    <button class="empty-cta" id="empty-cta" onclick="newNote()">＋ 创建备忘</button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">新建备忘</h3>
+    <input type="text" id="modal-input" placeholder="备忘标题…" maxlength="60">
+    <div class="modal-btns">
+      <button class="btn-sec" id="modal-cancel-btn" onclick="closeModal()">取消</button>
+      <button class="btn-primary" id="modal-confirm-btn" onclick="confirmModal()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN INPUTS -->
+<input type="file" id="img-input" accept="image/*" style="display:none" multiple onchange="insertImages(this)">
+<input type="file" id="file-input" style="display:none" multiple onchange="insertFiles(this)">
+
+<script>
+// ─────────────────────────────────────────
+// i18n DICTIONARIES
+// ─────────────────────────────────────────
+const I18N = {
+  zh: {
+    search: '搜索备忘录…', btnNew: '＋ 新建', btnExport: '↓ 导出',
+    noteCount: n => `共 ${n} 条备忘`,
+    langBtn: '🌐 语言',
+    titlePlaceholder: '无标题备忘…', editorPlaceholder: '开始写点什么…',
+    emptyTitle: '从一个想法开始',
+    emptySub: '创建你的第一条备忘，支持富文本、图片、文件、表格、待办清单等',
+    emptyCta: '＋ 创建备忘',
+    modalTitle: '新建备忘', modalPlaceholder: '备忘标题…',
+    modalCancel: '取消', modalConfirm: '创建',
+    confirmDelete: '确定删除这条备忘吗？',
+    defaultNoteName: n => `新建备忘 ${n}`,
+    lChars: '字符', lWords: '词数', lParas: '段落', lLines: '行数', lRead: '阅读约',
+    lSaved: '已自动保存', lModified: '刚刚修改',
+    lModAgo: m => `${m} 分钟前修改`,
+    readFmt: s => s < 60 ? s + ' 秒' : Math.round(s/60) + ' 分钟',
+    noNote: '请先选择一条备忘', exportFileSuffix: '备忘',
+    attachLabel: n => `附件 (${n})`,
+  },
+  en: {
+    search: 'Search notes…', btnNew: '＋ New', btnExport: '↓ Export',
+    noteCount: n => `${n} note${n===1?'':'s'}`,
+    langBtn: '🌐 Lang',
+    titlePlaceholder: 'Untitled note…', editorPlaceholder: 'Start writing…',
+    emptyTitle: 'Start with an idea',
+    emptySub: 'Create your first note. Supports rich text, images, files, tables, to-dos and more.',
+    emptyCta: '＋ Create Note',
+    modalTitle: 'New Note', modalPlaceholder: 'Note title…',
+    modalCancel: 'Cancel', modalConfirm: 'Create',
+    confirmDelete: 'Delete this note?',
+    defaultNoteName: n => `New Note ${n}`,
+    lChars: 'Chars', lWords: 'Words', lParas: 'Paras', lLines: 'Lines', lRead: 'Read',
+    lSaved: 'Saved', lModified: 'Just now',
+    lModAgo: m => `${m}m ago`,
+    readFmt: s => s < 60 ? s + 's' : Math.round(s/60) + 'min',
+    noNote: 'Please select a note first', exportFileSuffix: 'note',
+    attachLabel: n => `Attachments (${n})`,
+  },
+  ja: {
+    search: 'メモを検索…', btnNew: '＋ 新規', btnExport: '↓ 書き出し',
+    noteCount: n => `${n} 件のメモ`,
+    langBtn: '🌐 言語',
+    titlePlaceholder: 'タイトルなし…', editorPlaceholder: '書き始める…',
+    emptyTitle: 'アイデアから始めよう',
+    emptySub: '最初のメモを作成。リッチテキスト・画像・ファイル・表・ToDoをサポート。',
+    emptyCta: '＋ メモを作成',
+    modalTitle: '新しいメモ', modalPlaceholder: 'メモのタイトル…',
+    modalCancel: 'キャンセル', modalConfirm: '作成',
+    confirmDelete: 'このメモを削除しますか？',
+    defaultNoteName: n => `新しいメモ ${n}`,
+    lChars: '文字', lWords: '語数', lParas: '段落', lLines: '行数', lRead: '読了',
+    lSaved: '保存済み', lModified: 'たった今',
+    lModAgo: m => `${m}分前に編集`,
+    readFmt: s => s < 60 ? s + '秒' : Math.round(s/60) + '分',
+    noNote: 'メモを選択してください', exportFileSuffix: 'メモ',
+    attachLabel: n => `添付ファイル (${n})`,
+  },
+  ko: {
+    search: '메모 검색…', btnNew: '＋ 새로 만들기', btnExport: '↓ 내보내기',
+    noteCount: n => `총 ${n}개의 메모`,
+    langBtn: '🌐 언어',
+    titlePlaceholder: '제목 없음…', editorPlaceholder: '내용을 입력하세요…',
+    emptyTitle: '아이디어로 시작하세요',
+    emptySub: '첫 번째 메모를 만들어 보세요. 서식 있는 텍스트, 이미지, 파일, 표, 할 일 목록을 지원합니다.',
+    emptyCta: '＋ 메모 만들기',
+    modalTitle: '새 메모', modalPlaceholder: '메모 제목…',
+    modalCancel: '취소', modalConfirm: '만들기',
+    confirmDelete: '이 메모를 삭제하시겠습니까?',
+    defaultNoteName: n => `새 메모 ${n}`,
+    lChars: '글자', lWords: '단어', lParas: '문단', lLines: '줄', lRead: '읽기',
+    lSaved: '저장됨', lModified: '방금',
+    lModAgo: m => `${m}분 전 수정`,
+    readFmt: s => s < 60 ? s + '초' : Math.round(s/60) + '분',
+    noNote: '메모를 먼저 선택해 주세요', exportFileSuffix: '메모',
+    attachLabel: n => `첨부 파일 (${n})`,
+  },
+  fr: {
+    search: 'Rechercher…', btnNew: '＋ Nouveau', btnExport: '↓ Exporter',
+    noteCount: n => `${n} note${n>1?'s':''}`,
+    langBtn: '🌐 Langue',
+    titlePlaceholder: 'Note sans titre…', editorPlaceholder: 'Commencez à écrire…',
+    emptyTitle: 'Commencez par une idée',
+    emptySub: 'Créez votre première note. Texte enrichi, images, fichiers, tableaux, listes de tâches.',
+    emptyCta: '＋ Créer une note',
+    modalTitle: 'Nouvelle note', modalPlaceholder: 'Titre de la note…',
+    modalCancel: 'Annuler', modalConfirm: 'Créer',
+    confirmDelete: 'Supprimer cette note ?',
+    defaultNoteName: n => `Nouvelle note ${n}`,
+    lChars: 'Caract.', lWords: 'Mots', lParas: 'Parag.', lLines: 'Lignes', lRead: 'Lecture',
+    lSaved: 'Sauvegardé', lModified: 'À l\'instant',
+    lModAgo: m => `Il y a ${m} min`,
+    readFmt: s => s < 60 ? s + 's' : Math.round(s/60) + 'min',
+    noNote: 'Sélectionnez d\'abord une note', exportFileSuffix: 'note',
+    attachLabel: n => `Pièces jointes (${n})`,
+  }
+};
+
+let currentLang = localStorage.getItem('noteflow_lang') || 'zh';
+function t() { return I18N[currentLang] || I18N.zh; }
+
+function applyLang() {
+  const L = t();
+  document.getElementById('search-box').placeholder = L.search;
+  document.getElementById('btn-new').textContent = L.btnNew;
+  document.getElementById('btn-export').textContent = L.btnExport;
+  document.getElementById('lang-btn').textContent = L.langBtn;
+  document.getElementById('empty-title').textContent = L.emptyTitle;
+  document.getElementById('empty-sub').textContent = L.emptySub;
+  document.getElementById('empty-cta').textContent = L.emptyCta;
+  document.getElementById('title-input').placeholder = L.titlePlaceholder;
+  document.getElementById('editor').dataset.placeholder = L.editorPlaceholder;
+  document.getElementById('lbl-chars').textContent = L.lChars;
+  document.getElementById('lbl-words').textContent = L.lWords;
+  document.getElementById('lbl-paras').textContent = L.lParas;
+  document.getElementById('lbl-lines').textContent = L.lLines;
+  document.getElementById('lbl-read').textContent = L.lRead;
+  document.getElementById('lbl-saved').textContent = L.lSaved;
+  updateFooter();
+  // Update lang menu active state
+  document.querySelectorAll('.lang-opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.lang === currentLang);
+  });
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('noteflow_lang', lang);
+  applyLang();
+  closeLangMenu();
+  if (currentId) {
+    const note = getNoteById(currentId);
+    if (note) setModifiedLabel(note.modified);
+  }
+}
+
+let langMenuOpen = false;
+function toggleLangMenu() {
+  langMenuOpen = !langMenuOpen;
+  document.getElementById('lang-menu').classList.toggle('open', langMenuOpen);
+}
+function closeLangMenu() {
+  langMenuOpen = false;
+  document.getElementById('lang-menu').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#lang-btn') && !e.target.closest('#lang-menu')) closeLangMenu();
+});
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let notes = JSON.parse(localStorage.getItem('noteflow_notes') || '[]');
+let currentId = null;
+let saveTimer = null;
+let modalCb = null;
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+function init() {
+  applyLang();
+  renderList();
+  if (notes.length > 0) openNote(notes[0].id);
+  updateFooter();
+}
+
+// ─────────────────────────────────────────
+// NOTES CRUD
+// ─────────────────────────────────────────
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function newNote() {
+  const L = t();
+  openModal(L.modalTitle, L.defaultNoteName(notes.length + 1), (title) => {
+    const note = {
+      id: genId(),
+      title: title || L.defaultNoteName(notes.length + 1),
+      content: '',
+      created: Date.now(),
+      modified: Date.now(),
+      attachments: []
+    };
+    notes.unshift(note);
+    saveAll();
+    renderList();
+    openNote(note.id);
+    setTimeout(() => document.getElementById('editor').focus(), 80);
+  });
+}
+
+function openNote(id) {
+  saveCurrentIfDirty();
+  currentId = id;
+  const note = getNoteById(id);
+  if (!note) return;
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('toolbar').classList.remove('hidden');
+  document.getElementById('editor-area').classList.remove('hidden');
+  document.getElementById('stats-bar').classList.remove('hidden');
+  document.getElementById('title-input').value = note.title;
+  document.getElementById('editor').innerHTML = note.content || '';
+  document.getElementById('mc-date').textContent = fmtDate(note.created);
+  setModifiedLabel(note.modified);
+  renderList();
+  updateStats();
+  renderAttachments(note);
+}
+
+function deleteNote(id, e) {
+  e.stopPropagation();
+  if (!confirm(t().confirmDelete)) return;
+  notes = notes.filter(n => n.id !== id);
+  saveAll();
+  if (currentId === id) {
+    currentId = null;
+    notes.length > 0 ? openNote(notes[0].id) : showEmpty();
+  }
+  renderList();
+  updateFooter();
+}
+
+function showEmpty() {
+  document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('toolbar').classList.add('hidden');
+  document.getElementById('editor-area').classList.add('hidden');
+  document.getElementById('stats-bar').classList.add('hidden');
+  const ap = document.getElementById('attach-panel');
+  ap.classList.remove('open'); ap.innerHTML = '';
+}
+
+function getNoteById(id) { return notes.find(n => n.id === id); }
+
+function saveCurrentIfDirty() {
+  if (!currentId) return;
+  const note = getNoteById(currentId);
+  if (!note) return;
+  note.content = document.getElementById('editor').innerHTML;
+  note.title = document.getElementById('title-input').value || t().defaultNoteName(1);
+  note.modified = Date.now();
+  saveAll();
+}
+
+function saveAll() { localStorage.setItem('noteflow_notes', JSON.stringify(notes)); }
+
+function autoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveCurrentIfDirty();
+    renderList();
+    updateFooter();
+    const badge = document.getElementById('autosave-badge');
+    badge.classList.add('show');
+    setTimeout(() => badge.classList.remove('show'), 2000);
+  }, 800);
+}
+
+// ─────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────
+function renderList(filter) {
+  const container = document.getElementById('notes-list');
+  let list = notes;
+  if (filter) {
+    const q = filter.toLowerCase();
+    list = notes.filter(n => n.title.toLowerCase().includes(q) || stripHtml(n.content).toLowerCase().includes(q));
+  }
+  container.innerHTML = '';
+  list.forEach(note => {
+    const div = document.createElement('div');
+    div.className = 'note-item' + (note.id === currentId ? ' active' : '');
+    div.onclick = () => openNote(note.id);
+    const preview = stripHtml(note.content).replace(/\s+/g,' ').trim().slice(0,45) || '…';
+    div.innerHTML = `
+      <div class="note-item-title">${escHtml(note.title)}</div>
+      <div class="note-item-preview">${escHtml(preview)}</div>
+      <div class="note-item-meta">
+        <span class="note-item-date">${relDate(note.modified)}</span>
+        ${note.attachments && note.attachments.length > 0 ? `<span class="note-tag">📎 ${note.attachments.length}</span>` : ''}
+      </div>
+      <button class="note-item-del" onclick="deleteNote('${note.id}', event)">✕</button>`;
+    container.appendChild(div);
+  });
+  updateFooter();
+}
+
+function updateFooter() {
+  document.getElementById('note-count-label').textContent = t().noteCount(notes.length);
+}
+
+function filterNotes(q) { renderList(q); }
+
+// ─────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────
+function updateStats() {
+  const text = document.getElementById('editor').innerText || '';
+  const chars = text.replace(/\s/g,'').length;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const paras = (text.match(/\n\n/g)||[]).length + (text.trim() ? 1 : 0);
+  const lines = text.split('\n').filter(l => l.trim()).length;
+  const readSec = Math.max(1, Math.round(words / 4));
+  document.getElementById('st-chars').textContent = chars;
+  document.getElementById('st-words').textContent = words;
+  document.getElementById('st-paras').textContent = paras;
+  document.getElementById('st-lines').textContent = lines;
+  document.getElementById('st-read').textContent = t().readFmt(readSec);
+}
+
+function onTitleChange() {
+  const note = getNoteById(currentId);
+  if (note) note.title = document.getElementById('title-input').value || 'Untitled';
+  autoSave();
+}
+
+// ─────────────────────────────────────────
+// EDITOR EVENTS
+// ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const editor = document.getElementById('editor');
+  editor.addEventListener('input', () => { updateStats(); autoSave(); });
+  editor.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+  });
+  editor.addEventListener('click', e => {
+    if (e.target.type === 'checkbox') setTimeout(() => autoSave(), 50);
+    if (e.target.tagName === 'IMG') {
+      document.querySelectorAll('#editor img').forEach(i => i.classList.remove('selected'));
+      e.target.classList.add('selected');
+    }
+  });
+
+  // Sidebar resize
+  const resizer = document.getElementById('resizer');
+  const sidebar = document.getElementById('sidebar');
+  let startX, startW;
+  resizer.addEventListener('mousedown', e => {
+    startX = e.clientX; startW = sidebar.offsetWidth;
+    resizer.classList.add('dragging');
+    const onMove = e2 => { sidebar.style.width = Math.min(400, Math.max(180, startW + e2.clientX - startX)) + 'px'; };
+    const onUp = () => { resizer.classList.remove('dragging'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  init();
+});
+
+// ─────────────────────────────────────────
+// FORMATTING
+// ─────────────────────────────────────────
+function execCmd(cmd, val) {
+  document.getElementById('editor').focus();
+  document.execCommand(cmd, false, val || null);
+  autoSave();
+}
+function insertHeading(tag) {
+  document.execCommand('formatBlock', false, tag || 'p');
+  autoSave();
+}
+function insertCode() {
+  const sel = window.getSelection().toString();
+  document.execCommand('insertHTML', false, sel ? `<code>${sel}</code>` : '<pre><code>// code here</code></pre>');
+  autoSave();
+}
+function insertTable() {
+  document.execCommand('insertHTML', false, `<table><tr><th>Col 1</th><th>Col 2</th><th>Col 3</th></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table><br>`);
+  autoSave();
+}
+function insertLink() {
+  const url = prompt('URL:', 'https://');
+  if (url) {
+    const text = window.getSelection().toString() || url;
+    document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${text}</a>`);
+  }
+  autoSave();
+}
+function insertCheckbox() {
+  document.execCommand('insertHTML', false, `<div><input type="checkbox"> <span contenteditable="true">待办事项</span></div>`);
+  autoSave();
+}
+
+// ─────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────
+function insertImages(input) {
+  Array.from(input.files).forEach(file => {
+    const r = new FileReader();
+    r.onload = e => {
+      document.getElementById('editor').focus();
+      document.execCommand('insertHTML', false, `<img src="${e.target.result}" alt="${escHtml(file.name)}">`);
+      autoSave();
+    };
+    r.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function insertFiles(input) {
+  const note = getNoteById(currentId);
+  if (!note) return;
+  if (!note.attachments) note.attachments = [];
+  Array.from(input.files).forEach(file => {
+    const r = new FileReader();
+    r.onload = e => {
+      const id = genId();
+      note.attachments.push({ id, name: file.name, data: e.target.result, type: file.type, size: file.size });
+      const icon = fileIcon(file.name);
+      document.getElementById('editor').focus();
+      document.execCommand('insertHTML', false,
+        `<span class="file-embed" onclick="downloadAttachment('${id}')">${icon} ${escHtml(file.name)} <small style="color:var(--ink3)">(${fmtSize(file.size)})</small></span> `);
+      renderAttachments(note);
+      autoSave();
+    };
+    r.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function downloadAttachment(id) {
+  const note = getNoteById(currentId);
+  if (!note || !note.attachments) return;
+  const att = note.attachments.find(a => a.id === id);
+  if (!att) return;
+  const a = document.createElement('a');
+  a.href = att.data; a.download = att.name; a.click();
+}
+
+function renderAttachments(note) {
+  const panel = document.getElementById('attach-panel');
+  if (!note || !note.attachments || note.attachments.length === 0) {
+    panel.classList.remove('open'); panel.innerHTML = ''; return;
+  }
+  panel.classList.add('open');
+  panel.innerHTML = `<div style="font-size:11px;color:var(--ink3);margin-bottom:6px;font-weight:500;">${t().attachLabel(note.attachments.length)}</div>
+    <div class="attach-list">${note.attachments.map(a => `
+      <div class="attach-chip" onclick="downloadAttachment('${a.id}')">
+        ${fileIcon(a.name)} ${escHtml(a.name.length > 20 ? a.name.slice(0,18)+'…' : a.name)}
+        <span style="color:var(--ink3);font-size:10px">${fmtSize(a.size)}</span>
+        <span class="attach-rm" onclick="removeAttachment('${a.id}',event)">✕</span>
+      </div>`).join('')}</div>`;
+}
+
+function removeAttachment(id, e) {
+  e.stopPropagation();
+  const note = getNoteById(currentId);
+  if (!note) return;
+  note.attachments = note.attachments.filter(a => a.id !== id);
+  renderAttachments(note); autoSave();
+}
+
+function fileIcon(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const m = { pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📋',pptx:'📋',zip:'📦',rar:'📦',mp3:'🎵',mp4:'🎬',mov:'🎬',jpg:'🖼',jpeg:'🖼',png:'🖼',gif:'🖼',svg:'🖼',txt:'📃',md:'📃',py:'🐍',js:'📜',html:'🌐',css:'🎨',json:'🔧' };
+  return m[ext] || '📎';
+}
+function fmtSize(b) { return b<1024 ? b+'B' : b<1048576 ? (b/1024).toFixed(1)+'KB' : (b/1048576).toFixed(1)+'MB'; }
+
+// ─────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────
+function exportCurrentNote() {
+  if (!currentId) { alert(t().noNote); return; }
+  const note = getNoteById(currentId);
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(note.title)}</title>
+  <style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.8;color:#2a2420}h1{font-size:2em;margin-bottom:8px}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px}blockquote{border-left:3px solid #c97d3a;padding-left:16px;color:#5a5048;font-style:italic}</style>
+  </head><body><h1>${escHtml(note.title)}</h1><small style="color:#8a7f75">${fmtDate(note.created)}</small><hr style="margin:16px 0;border:none;border-top:1px solid #e0d8cc"><div>${note.content}</div></body></html>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  a.download = (note.title || t().exportFileSuffix) + '.html';
+  a.click();
+}
+
+// ─────────────────────────────────────────
+// MODAL  ← BUG FIX: save cb before closeModal() nulls it
+// ─────────────────────────────────────────
+function openModal(title, defaultVal, cb) {
+  modalCb = cb;
+  const L = t();
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-input').value = defaultVal || '';
+  document.getElementById('modal-input').placeholder = L.modalPlaceholder;
+  document.getElementById('modal-cancel-btn').textContent = L.modalCancel;
+  document.getElementById('modal-confirm-btn').textContent = L.modalConfirm;
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => { const inp = document.getElementById('modal-input'); inp.focus(); inp.select(); }, 50);
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  modalCb = null;
+}
+function confirmModal() {
+  const val = document.getElementById('modal-input').value.trim();
+  const cb = modalCb;   // ← save BEFORE closeModal nulls it
+  closeModal();
+  if (cb) cb(val);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && document.getElementById('modal-overlay').classList.contains('open')) confirmModal();
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+});
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s; return d.textContent || ''; }
+function fmtDate(ts) { const d = new Date(ts); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; }
+function relDate(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return t().lModified;
+  if (diff < 3600000) return t().lModAgo(Math.round(diff/60000));
+  if (diff < 86400000) return Math.round(diff/3600000) + 'h';
+  return fmtDate(ts);
+}
+function setModifiedLabel(ts) {
+  if (!ts) return;
+  document.getElementById('meta-modified').textContent = '✏️ ' + relDate(ts);
+}
+</script>
+</body>
+</html>
