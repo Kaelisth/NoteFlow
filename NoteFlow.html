@@ -76,6 +76,31 @@
   .lang-opt.active { color: var(--accent2); }
   .lang-opt .flag { font-size: 14px; }
 
+  /* Export dropdown */
+  #export-wrap { position: relative; flex: 1; }
+  #btn-export { width: 100%; }
+  #export-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--sidebar-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.45); z-index: 200; display: none; min-width: 160px; }
+  #export-menu.open { display: block; }
+  .export-opt { padding: 10px 14px; color: var(--sidebar-text); font-size: 12px; font-family: var(--font-sans); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 9px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .export-opt:last-child { border-bottom: none; }
+  .export-opt:hover { background: var(--sidebar-hover); color: var(--accent2); }
+  .export-opt .eicon { font-size: 14px; width: 18px; text-align: center; }
+  .export-opt .edesc { font-size: 10px; color: var(--sidebar-muted); display: block; margin-top: 1px; }
+  #export-toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--sidebar-bg); color: var(--sidebar-text); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 20px; font-size: 13px; font-family: var(--font-sans); box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 9999; display: none; align-items: center; gap: 8px; }
+  #export-toast.show { display: flex; }
+  .toast-spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--accent2); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media print {
+    #sidebar, #resizer, #toolbar, #stats-bar, #attach-panel, #empty-state { display: none !important; }
+    body { background: white !important; overflow: visible !important; height: auto !important; }
+    #main { overflow: visible !important; }
+    #editor-area { padding: 0 20px !important; overflow: visible !important; }
+    #editor-wrap { overflow: visible !important; height: auto !important; }
+    #editor { font-size: 14pt !important; line-height: 1.8 !important; }
+    #note-meta-bar { border-bottom: 1px solid #ccc !important; margin-bottom: 16px !important; }
+    #title-input { font-size: 22pt !important; border-bottom: 1px solid #ccc !important; }
+  }
+
   /* ── MAIN ── */
   #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
   #editor-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 28px 32px 0; }
@@ -177,7 +202,15 @@
   </div>
   <div id="sidebar-toolbar">
     <button class="s-btn" id="btn-new" onclick="newNote()">＋ 新建</button>
-    <button class="s-btn" id="btn-export" onclick="exportCurrentNote()">↓ 导出</button>
+    <div id="export-wrap">
+      <button class="s-btn" id="btn-export" onclick="toggleExportMenu()">↓ <span id="btn-export-label">导出</span></button>
+      <div id="export-menu">
+        <div class="export-opt" onclick="exportHTML()"><span class="eicon">📄</span><span><span id="eopt-html">HTML 文件</span><span class="edesc">.html · 保留所有格式</span></span></div>
+        <div class="export-opt" onclick="exportPDF()"><span class="eicon">🖨</span><span><span id="eopt-pdf">导出 PDF</span><span class="edesc">调用系统打印 / 另存为 PDF</span></span></div>
+        <div class="export-opt" onclick="exportImage('png')"><span class="eicon">🖼</span><span><span id="eopt-img">导出图片</span><span class="edesc">.png · 当前视图截图</span></span></div>
+        <div class="export-opt" onclick="exportImage('long')"><span class="eicon">📜</span><span><span id="eopt-long">导出长图</span><span class="edesc">.png · 完整内容长图</span></span></div>
+      </div>
+    </div>
   </div>
   <div id="notes-list"></div>
   <div id="sidebar-footer">
@@ -281,6 +314,9 @@
   </div>
 </div>
 
+<!-- EXPORT TOAST -->
+<div id="export-toast"><div class="toast-spin"></div><span id="toast-msg">正在生成…</span></div>
+
 <!-- HIDDEN INPUTS -->
 <input type="file" id="img-input" accept="image/*" style="display:none" multiple onchange="insertImages(this)">
 <input type="file" id="file-input" style="display:none" multiple onchange="insertFiles(this)">
@@ -307,6 +343,7 @@ const I18N = {
     lModAgo: m => `${m} 分钟前修改`,
     readFmt: s => s < 60 ? s + ' 秒' : Math.round(s/60) + ' 分钟',
     noNote: '请先选择一条备忘', exportFileSuffix: '备忘',
+    btnExportLabel: '导出', eoptHtml: 'HTML 文件', eoptPdf: '导出 PDF', eoptImg: '导出图片', eoptLong: '导出长图', toastGen: '正在生成…', toastDone: '已保存',
     attachLabel: n => `附件 (${n})`,
   },
   en: {
@@ -326,6 +363,7 @@ const I18N = {
     lModAgo: m => `${m}m ago`,
     readFmt: s => s < 60 ? s + 's' : Math.round(s/60) + 'min',
     noNote: 'Please select a note first', exportFileSuffix: 'note',
+    btnExportLabel: 'Export', eoptHtml: 'HTML File', eoptPdf: 'Export PDF', eoptImg: 'Export Image', eoptLong: 'Long Image', toastGen: 'Generating…', toastDone: 'Saved',
     attachLabel: n => `Attachments (${n})`,
   },
   ja: {
@@ -345,6 +383,7 @@ const I18N = {
     lModAgo: m => `${m}分前に編集`,
     readFmt: s => s < 60 ? s + '秒' : Math.round(s/60) + '分',
     noNote: 'メモを選択してください', exportFileSuffix: 'メモ',
+    btnExportLabel: '書き出し', eoptHtml: 'HTML ファイル', eoptPdf: 'PDF 書き出し', eoptImg: '画像として保存', eoptLong: 'ロング画像', toastGen: '生成中…', toastDone: '保存完了',
     attachLabel: n => `添付ファイル (${n})`,
   },
   ko: {
@@ -364,6 +403,7 @@ const I18N = {
     lModAgo: m => `${m}분 전 수정`,
     readFmt: s => s < 60 ? s + '초' : Math.round(s/60) + '분',
     noNote: '메모를 먼저 선택해 주세요', exportFileSuffix: '메모',
+    btnExportLabel: '내보내기', eoptHtml: 'HTML 파일', eoptPdf: 'PDF 내보내기', eoptImg: '이미지 내보내기', eoptLong: '긴 이미지', toastGen: '생성 중…', toastDone: '저장됨',
     attachLabel: n => `첨부 파일 (${n})`,
   },
   fr: {
@@ -383,6 +423,7 @@ const I18N = {
     lModAgo: m => `Il y a ${m} min`,
     readFmt: s => s < 60 ? s + 's' : Math.round(s/60) + 'min',
     noNote: 'Sélectionnez d\'abord une note', exportFileSuffix: 'note',
+    btnExportLabel: 'Exporter', eoptHtml: 'Fichier HTML', eoptPdf: 'Exporter en PDF', eoptImg: 'Exporter image', eoptLong: 'Image longue', toastGen: 'Génération…', toastDone: 'Enregistré',
     attachLabel: n => `Pièces jointes (${n})`,
   }
 };
@@ -407,6 +448,13 @@ function applyLang() {
   document.getElementById('lbl-lines').textContent = L.lLines;
   document.getElementById('lbl-read').textContent = L.lRead;
   document.getElementById('lbl-saved').textContent = L.lSaved;
+  document.getElementById('btn-export-label').textContent = L.btnExportLabel;
+  if (document.getElementById('eopt-html')) {
+    document.getElementById('eopt-html').textContent = L.eoptHtml;
+    document.getElementById('eopt-pdf').textContent = L.eoptPdf;
+    document.getElementById('eopt-img').textContent = L.eoptImg;
+    document.getElementById('eopt-long').textContent = L.eoptLong;
+  }
   updateFooter();
   // Update lang menu active state
   document.querySelectorAll('.lang-opt').forEach(el => {
@@ -714,7 +762,11 @@ function downloadAttachment(id) {
   const att = note.attachments.find(a => a.id === id);
   if (!att) return;
   const a = document.createElement('a');
-  a.href = att.data; a.download = att.name; a.click();
+  a.href = att.data;
+  a.download = att.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 function renderAttachments(note) {
@@ -750,16 +802,187 @@ function fmtSize(b) { return b<1024 ? b+'B' : b<1048576 ? (b/1024).toFixed(1)+'K
 // ─────────────────────────────────────────
 // EXPORT
 // ─────────────────────────────────────────
-function exportCurrentNote() {
+// ─────────────────────────────────────────
+// EXPORT MENU
+// ─────────────────────────────────────────
+let exportMenuOpen = false;
+function toggleExportMenu() {
+  if (!currentId) { alert(t().noNote); return; }
+  exportMenuOpen = !exportMenuOpen;
+  document.getElementById('export-menu').classList.toggle('open', exportMenuOpen);
+}
+function closeExportMenu() {
+  exportMenuOpen = false;
+  document.getElementById('export-menu').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#export-wrap')) closeExportMenu();
+});
+
+function showToast(msg) {
+  const el = document.getElementById('export-toast');
+  document.getElementById('toast-msg').textContent = msg || t().toastGen;
+  el.classList.add('show');
+}
+function hideToast() { document.getElementById('export-toast').classList.remove('show'); }
+
+// ── HTML ──
+function exportHTML() {
+  closeExportMenu();
   if (!currentId) { alert(t().noNote); return; }
   const note = getNoteById(currentId);
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(note.title)}</title>
-  <style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.8;color:#2a2420}h1{font-size:2em;margin-bottom:8px}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px}blockquote{border-left:3px solid #c97d3a;padding-left:16px;color:#5a5048;font-style:italic}</style>
+  <style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.8;color:#2a2420}h1{font-size:2em;margin-bottom:8px}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px}blockquote{border-left:3px solid #c97d3a;padding-left:16px;color:#5a5048;font-style:italic}code{background:#f5f0e8;border-radius:3px;padding:1px 4px;font-family:monospace}pre{background:#2c2825;color:#e0d8cc;border-radius:8px;padding:14px 16px;overflow-x:auto}</style>
   </head><body><h1>${escHtml(note.title)}</h1><small style="color:#8a7f75">${fmtDate(note.created)}</small><hr style="margin:16px 0;border:none;border-top:1px solid #e0d8cc"><div>${note.content}</div></body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-  a.download = (note.title || t().exportFileSuffix) + '.html';
-  a.click();
+  a.href = url; a.download = (note.title || t().exportFileSuffix) + '.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── PDF ──
+function exportPDF() {
+  closeExportMenu();
+  if (!currentId) { alert(t().noNote); return; }
+  window.print();
+}
+
+// ── IMAGE / LONG IMAGE (pure JS, no CDN) ──
+function exportImage(mode) {
+  closeExportMenu();
+  if (!currentId) { alert(t().noNote); return; }
+  showToast(t().toastGen);
+
+  const note = getNoteById(currentId);
+
+  // Build a self-contained, styled HTML snapshot of the note
+  // Images stored as base64 data-URIs will render fine in SVG foreignObject.
+  const titleText = escHtml(document.getElementById('title-input').value || note.title);
+  const dateText  = fmtDate(note.created);
+  // Inline image sources already base64; strip onclick/interactive attrs for clean render
+  const bodyHtml  = (note.content || '')
+    .replace(/onclick="[^"]*"/g, '')
+    .replace(/contenteditable="[^"]*"/g, '');
+
+  const PAD = 48;
+  const wrap = document.getElementById('editor-wrap');
+  const W    = wrap.clientWidth  || 760;
+  const H    = mode === 'long' ? wrap.scrollHeight + PAD * 2
+                                : wrap.clientHeight + PAD * 2;
+  const SCALE = 2;   // retina
+
+  // Inline CSS – no external fonts, graceful serif fallback
+  const css = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,'Noto Serif SC',serif;font-size:18px;
+         line-height:1.85;color:#2A2420;background:#FDFAF4;
+         padding:${PAD}px 32px;width:${W}px}
+    h1{font-size:30px;font-weight:400;color:#2A2420;
+       border-bottom:1.5px solid rgba(80,60,30,.15);padding-bottom:8px;margin-bottom:6px}
+    .meta{font-size:11px;color:#8A7F75;margin-bottom:22px}
+    h2{font-size:22px;font-weight:600;margin:10px 0 4px}
+    h3{font-size:18px;font-weight:600;margin:8px 0 4px}
+    p,div{margin:0 0 6px}
+    ul,ol{padding-left:22px}
+    blockquote{border-left:3px solid #C97D3A;padding-left:16px;color:#5A5048;font-style:italic;margin:8px 0}
+    table{border-collapse:collapse;width:100%;font-size:15px;margin:10px 0}
+    td,th{border:1px solid rgba(80,60,30,.15);padding:7px 11px}
+    th{background:#EDE7D9;font-weight:600}
+    code{background:#EDE7D9;border-radius:4px;padding:1px 5px;font-size:14px;font-family:monospace;color:#C0392B}
+    pre{background:#2C2825;border-radius:8px;padding:14px 16px;margin:10px 0}
+    pre code{background:none;color:#E0D8CC;font-size:13px;padding:0}
+    img{max-width:100%;border-radius:8px;margin:10px 0;display:block}
+    .file-embed{display:inline-flex;align-items:center;gap:8px;background:#EDE7D9;
+                border:1px solid rgba(80,60,30,.12);border-radius:8px;
+                padding:8px 12px;margin:6px 0;font-size:14px;font-family:sans-serif}
+    a{color:#C97D3A}
+    input[type=checkbox]{margin-right:6px}
+  `;
+
+  const htmlFrag = `<html xmlns="http://www.w3.org/1999/xhtml">
+    <head><meta charset="UTF-8"/><style>${css}</style></head>
+    <body>
+      <h1>${titleText}</h1>
+      <div class="meta">📅 ${dateText}</div>
+      ${bodyHtml}
+    </body>
+  </html>`;
+
+  const svgSrc = `<svg xmlns="http://www.w3.org/2000/svg"
+      width="${W}" height="${H}">
+    <foreignObject x="0" y="0" width="${W}" height="${H}">
+      ${htmlFrag}
+    </foreignObject>
+  </svg>`;
+
+  // Chrome blocks SVG foreignObject loaded via blob URL on file:// → global "Script error."
+  // Fix: encode as base64 data URL — treated as same-origin inline content, no restriction.
+  let svgDataUrl;
+  try {
+    svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgSrc)));
+  } catch (encErr) {
+    hideToast();
+    openFallbackWindow(note, titleText, dateText, bodyHtml, css, W, H);
+    return;
+  }
+
+  const img = new Image();
+
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width  = W * SCALE;
+      canvas.height = H * SCALE;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(SCALE, SCALE);
+      ctx.fillStyle = '#FDFAF4';
+      ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(img, 0, 0, W, H);
+      // canvas.toBlob can throw SecurityError if canvas is tainted by cross-origin imgs
+      canvas.toBlob(pngBlob => {
+        hideToast();
+        const dlUrl = URL.createObjectURL(pngBlob);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = (note.title || t().exportFileSuffix)
+                     + (mode === 'long' ? '_长图' : '') + '.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
+      }, 'image/png');
+    } catch (e) {
+      hideToast();
+      openFallbackWindow(note, titleText, dateText, bodyHtml, css, W, H);
+    }
+  };
+
+  img.onerror = () => {
+    hideToast();
+    openFallbackWindow(note, titleText, dateText, bodyHtml, css, W, H);
+  };
+
+  img.src = svgDataUrl;
+}
+
+function openFallbackWindow(note, titleText, dateText, bodyHtml, css, W, H) {
+  hideToast();
+  const banner = '<div style="position:fixed;top:0;left:0;right:0;background:#2C2825;color:#E8A055;'
+    + 'font-family:sans-serif;font-size:13px;padding:10px 20px;text-align:center;z-index:9999">'
+    + '📸 &nbsp;按 <kbd style="background:#3A3530;border-radius:4px;padding:2px 6px">Ctrl+Shift+S</kbd>'
+    + ' 或右键保存图片 &nbsp;·&nbsp; 打印请按 <kbd style="background:#3A3530;border-radius:4px;padding:2px 6px">Ctrl+P</kbd>'
+    + ' &nbsp;<button onclick="window.print()" style="margin-left:12px;background:#C97D3A;color:white;'
+    + 'border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px">🖨 打印/保存PDF</button>'
+    + '</div><div style="height:44px"></div>';
+  const pageHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>' + escHtml(note.title) + '</title>'
+    + '<style>' + css + ' body{padding-top:0} @media print{.no-print{display:none}}</style></head>'
+    + '<body><div class="no-print">' + banner + '</div>'
+    + '<h1>' + titleText + '</h1>'
+    + '<div class="meta">📅 ' + dateText + '</div>'
+    + bodyHtml + '</body></html>';
+  const fallUrl = URL.createObjectURL(new Blob([pageHtml], { type: 'text/html' }));
+  const w = window.open(fallUrl, '_blank', 'width=' + W + ',height=' + Math.min(H, 900) + ',resizable=yes');
+  if (w) w.addEventListener('load', function() { setTimeout(function() { URL.revokeObjectURL(fallUrl); }, 5000); });
 }
 
 // ─────────────────────────────────────────
